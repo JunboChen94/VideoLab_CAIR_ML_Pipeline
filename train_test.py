@@ -7,6 +7,7 @@ from utils.evaluation import evaluator
 from models import get_model
 import argparse
 
+# pipeline configuration with the arguments
 parser = argparse.ArgumentParser(description='feature_election_and_prediction')
 parser.add_argument(
     "--root_dir",
@@ -182,6 +183,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
+# load configuration files saving train/test samples/subjects defined
 assert os.path.isfile(args.config_file), "config file was not found!"
 with open(args.config_file, 'rb') as handle:
     configs = pickle.load(handle)
@@ -197,8 +199,9 @@ if 'train_subjects' in configs:
     assert len(list(set(train_subjects) & set(test_subjects))) == 0
     if len(train_subjects) != len(train_samples):
         subject_split = True
-
+# feature generations
 if args.preload_data:
+    # load feature generated and saved previously
     train_features_file = os.path.join(args.root_dir, 'features', f"{args.save_name}_train.pickle")
     with open(train_features_file, 'rb') as handle:
         train_features = pickle.load(handle)
@@ -208,9 +211,11 @@ if args.preload_data:
         test_features = pickle.load(handle)
         test_features = test_features['features']
 else:
+    # generate train and test set's features
     metrics = args.metrics.split(',')
     rois = args.rois.split(',')
     stat_comp_name_pairs = get_stat_comp_name_pairs(args)
+    # training set feature generation
     train_features = feature_gen(train_samples, 
                                  metrics, 
                                  rois, 
@@ -221,6 +226,7 @@ else:
                                  suffix=args.suffix, 
                                  registered=args.registered, 
                                  save_name=args.save_name+'_train')
+    # test set feature generation
     test_features = feature_gen(test_samples, 
                                  metrics, 
                                  rois, 
@@ -234,10 +240,13 @@ else:
     train_features = train_features['features']
     test_features = test_features['features']
 
+# normalize features with z-score based on the training set
 train_features, test_features = z_score(train_features, test_features)
 
+# initialize model
 model = get_model(args)
 
+# run feature selection based on cross-validation done on the training set
 best_feature_set_accu, _, best_feature_set, record = best_first_search_mg(train_features, 
                                                                           train_sample_labels, 
                                                                           model,
@@ -250,7 +259,7 @@ best_feature_set_accu, _, best_feature_set, record = best_first_search_mg(train_
                                                                           train_samples=train_samples if subject_split else None,
                                                                           train_subjs=train_subjects if subject_split else None, 
                                                                           train_subjs_label=train_subject_labels if subject_split else None)
-
+# show performance of cross-validation with best features found 
 print("best feature set performance for cross-validation")
 print(best_feature_set_accu)
 print("selected one hot")
@@ -259,6 +268,8 @@ best_feature_set = best_feature_set.nonzero()[0]
 print("selected feature")
 print(best_feature_set)
 
+# with the best feature subset, retrain the model with all samples in the training set
+# and show its performance on the test set
 train_features_selected = train_features[:, best_feature_set]
 test_features_selected = test_features[:, best_feature_set]
 clf = estimator.fit(train_features_selected, train_sample_labels)
