@@ -1,7 +1,7 @@
 # VideoLab_CAIR_ML_Pipeline
 Feature Section and prediction pipeline based on features generated from diffusion metrics
 ```
-python train_test.py 
+python train_test.py ./config/config.pickle
 ```
 
 
