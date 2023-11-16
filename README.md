@@ -1,7 +1,7 @@
 # VideoLab_CAIR_ML_Pipeline
 Feature Section and prediction pipeline based on features generated from diffusion metrics
 ```
-python train_test.py --root_dir <root directory> --config_file <your configuration file> ....
+python train_test.py 
 ```
 
 
